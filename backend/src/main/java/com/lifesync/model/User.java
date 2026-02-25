@@ -28,6 +28,14 @@ public class User {
     @Column(nullable = false)
     private Role role = Role.ROLE_USER;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "family_id")
+    private Family family;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "family_role", nullable = false)
+    private FamilyRole familyRole = FamilyRole.MEMBER;
+
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Expense> expenses = new ArrayList<>();
 
@@ -78,6 +86,22 @@ public class User {
 
     public void setRole(Role role) {
         this.role = role;
+    }
+
+    public Family getFamily() {
+        return family;
+    }
+
+    public void setFamily(Family family) {
+        this.family = family;
+    }
+
+    public FamilyRole getFamilyRole() {
+        return familyRole;
+    }
+
+    public void setFamilyRole(FamilyRole familyRole) {
+        this.familyRole = familyRole;
     }
 
     public List<Expense> getExpenses() {

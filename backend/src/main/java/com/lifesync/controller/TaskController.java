@@ -25,27 +25,34 @@ public class TaskController {
     }
 
     @PostMapping
-    public ResponseEntity<TaskResponse> addTask(@Valid @RequestBody TaskRequest request, Authentication auth) {
+    public ResponseEntity<TaskResponse> addTask(@Valid @RequestBody TaskRequest request,
+                                                Authentication auth,
+                                                @RequestParam(name = "family_id", required = false) Long familyId) {
         User user = userService.getCurrentUser(auth.getName());
-        return ResponseEntity.ok(taskService.addTask(user, request));
+        return ResponseEntity.ok(taskService.addTask(user, familyId, request));
     }
 
     @GetMapping
-    public ResponseEntity<List<TaskResponse>> getTasks(Authentication auth) {
+    public ResponseEntity<List<TaskResponse>> getTasks(Authentication auth,
+                                                       @RequestParam(name = "family_id", required = false) Long familyId) {
         User user = userService.getCurrentUser(auth.getName());
-        return ResponseEntity.ok(taskService.getTasks(user));
+        return ResponseEntity.ok(taskService.getTasks(user, familyId));
     }
 
     @PatchMapping("/{id}/complete")
-    public ResponseEntity<TaskResponse> markComplete(@PathVariable Long id, Authentication auth) {
+    public ResponseEntity<TaskResponse> markComplete(@PathVariable Long id,
+                                                     Authentication auth,
+                                                     @RequestParam(name = "family_id", required = false) Long familyId) {
         User user = userService.getCurrentUser(auth.getName());
-        return ResponseEntity.ok(taskService.markComplete(user, id));
+        return ResponseEntity.ok(taskService.markComplete(user, familyId, id));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteTask(@PathVariable Long id, Authentication auth) {
+    public ResponseEntity<Void> deleteTask(@PathVariable Long id,
+                                           Authentication auth,
+                                           @RequestParam(name = "family_id", required = false) Long familyId) {
         User user = userService.getCurrentUser(auth.getName());
-        taskService.deleteTask(user, id);
+        taskService.deleteTask(user, familyId, id);
         return ResponseEntity.noContent().build();
     }
 }

@@ -9,6 +9,15 @@ api.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+
+  if (!config.url?.startsWith("/auth")) {
+    const userRaw = localStorage.getItem("user");
+    const user = userRaw ? JSON.parse(userRaw) : null;
+    if (user?.familyId) {
+      config.params = { ...(config.params || {}), family_id: user.familyId };
+    }
+  }
+
   return config;
 });
 

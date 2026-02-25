@@ -15,6 +15,9 @@ public class RegisterRequest {
     @NotBlank(message = "Password is required")
     private String password;
 
+    private String familyName;
+    private String inviteToken;
+
     public String getName() {
         return name;
     }
@@ -37,5 +40,21 @@ public class RegisterRequest {
 
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    public String getFamilyName() {
+        return familyName;
+    }
+
+    public void setFamilyName(String familyName) {
+        this.familyName = familyName;
+    }
+
+    public String getInviteToken() {
+        return inviteToken;
+    }
+
+    public void setInviteToken(String inviteToken) {
+        this.inviteToken = inviteToken;
     }
 }

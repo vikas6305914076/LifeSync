@@ -10,16 +10,28 @@ export default function RegisterPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const form = new FormData(e.target);
+    const inviteToken = (form.get("inviteToken") || "").trim();
+
     try {
-      const response = await api.post("/auth/register", {
+      const payload = {
         name: form.get("name"),
         email: form.get("email"),
-        password: form.get("password")
-      });
+        password: form.get("password"),
+        familyName: form.get("familyName")
+      };
+
+      if (inviteToken) {
+        payload.inviteToken = inviteToken;
+      }
+
+      const response = await api.post("/auth/register", payload);
       login(response.data);
       navigate("/dashboard");
     } catch (error) {
-      alert(error.response?.data?.error || "Registration failed");
+      const message =
+        error.response?.data?.error ||
+        (error.request ? "Cannot reach backend server. Start backend on port 8080." : "Registration failed");
+      alert(message);
     }
   };
 
@@ -31,6 +43,8 @@ export default function RegisterPage() {
           <input name="name" type="text" placeholder="Name" required />
           <input name="email" type="email" placeholder="Email" required />
           <input name="password" type="password" placeholder="Password" required />
+          <input name="familyName" type="text" placeholder="Family name (for new workspace)" />
+          <input name="inviteToken" type="text" placeholder="Invite token (if joining an existing family)" />
           <button className="primary-btn" type="submit">
             Create Account
           </button>

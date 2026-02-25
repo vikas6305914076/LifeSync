@@ -25,27 +25,34 @@ public class GroceryController {
     }
 
     @PostMapping
-    public ResponseEntity<GroceryResponse> addItem(@Valid @RequestBody GroceryRequest request, Authentication auth) {
+    public ResponseEntity<GroceryResponse> addItem(@Valid @RequestBody GroceryRequest request,
+                                                   Authentication auth,
+                                                   @RequestParam(name = "family_id", required = false) Long familyId) {
         User user = userService.getCurrentUser(auth.getName());
-        return ResponseEntity.ok(groceryService.addItem(user, request));
+        return ResponseEntity.ok(groceryService.addItem(user, familyId, request));
     }
 
     @GetMapping
-    public ResponseEntity<List<GroceryResponse>> getItems(Authentication auth) {
+    public ResponseEntity<List<GroceryResponse>> getItems(Authentication auth,
+                                                          @RequestParam(name = "family_id", required = false) Long familyId) {
         User user = userService.getCurrentUser(auth.getName());
-        return ResponseEntity.ok(groceryService.getItems(user));
+        return ResponseEntity.ok(groceryService.getItems(user, familyId));
     }
 
     @PatchMapping("/{id}/purchase")
-    public ResponseEntity<GroceryResponse> markPurchased(@PathVariable Long id, Authentication auth) {
+    public ResponseEntity<GroceryResponse> markPurchased(@PathVariable Long id,
+                                                         Authentication auth,
+                                                         @RequestParam(name = "family_id", required = false) Long familyId) {
         User user = userService.getCurrentUser(auth.getName());
-        return ResponseEntity.ok(groceryService.markPurchased(user, id));
+        return ResponseEntity.ok(groceryService.markPurchased(user, familyId, id));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteItem(@PathVariable Long id, Authentication auth) {
+    public ResponseEntity<Void> deleteItem(@PathVariable Long id,
+                                           Authentication auth,
+                                           @RequestParam(name = "family_id", required = false) Long familyId) {
         User user = userService.getCurrentUser(auth.getName());
-        groceryService.deleteItem(user, id);
+        groceryService.deleteItem(user, familyId, id);
         return ResponseEntity.noContent().build();
     }
 }

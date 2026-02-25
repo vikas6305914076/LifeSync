@@ -27,6 +27,7 @@ export default function Sidebar() {
         <h2 className="logo">LifeSync</h2>
         <p className="user-name">{user?.name || "User"}</p>
         <p className="user-email">{user?.email || ""}</p>
+        <p className="family-chip">{user?.familyName || "No family"}</p>
       </div>
 
       <nav className="sidebar-nav">

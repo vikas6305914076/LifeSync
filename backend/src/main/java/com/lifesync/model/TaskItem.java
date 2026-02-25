@@ -20,6 +20,10 @@ public class TaskItem {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "family_id")
+    private Family family;
+
     public Long getId() {
         return id;
     }
@@ -50,5 +54,13 @@ public class TaskItem {
 
     public void setUser(User user) {
         this.user = user;
+    }
+
+    public Family getFamily() {
+        return family;
+    }
+
+    public void setFamily(Family family) {
+        this.family = family;
     }
 }

@@ -286,3 +286,55 @@ thead {
     grid-template-columns: 1fr;
   }
 }
+
+.split-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.panel-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  padding: 16px;
+}
+
+.panel-card h2 {
+  margin: 0 0 10px;
+  font-size: 1.1rem;
+}
+
+.stack-list.compact {
+  gap: 8px;
+}
+
+.member-row,
+.invite-row {
+  border: 1px solid #edf2f7;
+  border-radius: 10px;
+  padding: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.member-row p,
+.invite-row p {
+  margin: 2px 0 0;
+  color: var(--muted);
+}
+
+.token-text {
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+  max-width: 320px;
+}
+
+@media (max-width: 920px) {
+  .split-grid {
+    grid-template-columns: 1fr;
+  }
+}

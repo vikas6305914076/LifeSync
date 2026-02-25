@@ -25,21 +25,26 @@ public class ExpenseController {
     }
 
     @PostMapping
-    public ResponseEntity<ExpenseResponse> addExpense(@Valid @RequestBody ExpenseRequest request, Authentication auth) {
+    public ResponseEntity<ExpenseResponse> addExpense(@Valid @RequestBody ExpenseRequest request,
+                                                      Authentication auth,
+                                                      @RequestParam(name = "family_id", required = false) Long familyId) {
         User user = userService.getCurrentUser(auth.getName());
-        return ResponseEntity.ok(expenseService.addExpense(user, request));
+        return ResponseEntity.ok(expenseService.addExpense(user, familyId, request));
     }
 
     @GetMapping
-    public ResponseEntity<List<ExpenseResponse>> getExpenses(Authentication auth) {
+    public ResponseEntity<List<ExpenseResponse>> getExpenses(Authentication auth,
+                                                             @RequestParam(name = "family_id", required = false) Long familyId) {
         User user = userService.getCurrentUser(auth.getName());
-        return ResponseEntity.ok(expenseService.getExpenses(user));
+        return ResponseEntity.ok(expenseService.getExpenses(user, familyId));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteExpense(@PathVariable Long id, Authentication auth) {
+    public ResponseEntity<Void> deleteExpense(@PathVariable Long id,
+                                              Authentication auth,
+                                              @RequestParam(name = "family_id", required = false) Long familyId) {
         User user = userService.getCurrentUser(auth.getName());
-        expenseService.deleteExpense(user, id);
+        expenseService.deleteExpense(user, familyId, id);
         return ResponseEntity.noContent().build();
     }
 }

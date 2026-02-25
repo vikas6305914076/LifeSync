@@ -18,7 +18,10 @@ export default function LoginPage() {
       login(response.data);
       navigate("/dashboard");
     } catch (error) {
-      alert(error.response?.data?.error || "Login failed");
+      const message =
+        error.response?.data?.error ||
+        (error.request ? "Cannot reach backend server. Start backend on port 8080." : "Login failed");
+      alert(message);
     }
   };
 
