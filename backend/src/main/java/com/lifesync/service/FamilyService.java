@@ -52,17 +52,43 @@ public class FamilyService {
     public FamilyInviteResponse createInvite(User user, Long familyId, InviteCreateRequest request) {
         userService.requireFamilyAdmin(user, familyId);
         Family family = userService.getAccessibleFamily(user, familyId);
+        String normalizedEmail = request.getEmail().toLowerCase();
 
         boolean alreadyMember = userRepository.findAllByFamilyOrderByNameAsc(family).stream()
-                .anyMatch(member -> member.getEmail().equalsIgnoreCase(request.getEmail()));
+                .anyMatch(member -> member.getEmail().equalsIgnoreCase(normalizedEmail));
         if (alreadyMember) {
-            throw new BadRequestException("User is already a family member");
+            return new FamilyInviteResponse(
+                    null,
+                    normalizedEmail,
+                    null,
+                    "ALREADY_MEMBER",
+                    null
+            );
         }
 
-        FamilyInvite invite = new FamilyInvite();
+        FamilyInvite invite = familyInviteRepository
+                .findByFamilyIdAndInvitedEmailAndStatus(family.getId(), normalizedEmail, InviteStatus.PENDING)
+                .orElse(null);
+
+        if (invite != null) {
+            if (invite.getExpiresAt().isBefore(LocalDateTime.now())) {
+                invite.setInviteToken(UUID.randomUUID().toString());
+                invite.setExpiresAt(LocalDateTime.now().plusDays(7));
+                invite = familyInviteRepository.save(invite);
+            }
+            emailService.sendInvitationEmail(
+                    invite.getInvitedEmail(),
+                    invite.getInviteToken(),
+                    family.getName(),
+                    user.getName()
+            );
+            return toInviteResponse(invite);
+        }
+
+        invite = new FamilyInvite();
         invite.setFamily(family);
         invite.setInvitedBy(user);
-        invite.setInvitedEmail(request.getEmail().toLowerCase());
+        invite.setInvitedEmail(normalizedEmail);
         invite.setInviteToken(UUID.randomUUID().toString());
         invite.setStatus(InviteStatus.PENDING);
         invite.setExpiresAt(LocalDateTime.now().plusDays(7));

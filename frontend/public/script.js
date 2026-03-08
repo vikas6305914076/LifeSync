@@ -284,14 +284,18 @@ function setupModals() {
 function setupAuthUI() {
   document.getElementById("showRegisterBtn")?.addEventListener("click", (e) => {
     e.preventDefault();
-    loginPage.classList.remove("active");
-    registerPage.classList.add("active");
+    if (loginPage && registerPage) {
+      loginPage.classList.remove("active");
+      registerPage.classList.add("active");
+    }
   });
 
   document.getElementById("showLoginBtn")?.addEventListener("click", (e) => {
     e.preventDefault();
-    registerPage.classList.remove("active");
-    loginPage.classList.add("active");
+    if (loginPage && registerPage) {
+      registerPage.classList.remove("active");
+      loginPage.classList.add("active");
+    }
   });
 }
 
@@ -507,18 +511,18 @@ function setupForms() {
     const password = document.getElementById("password").value.trim();
 
     if (!email || !password) {
-      loginError.textContent = "Please enter email and password.";
+      if (loginError) loginError.textContent = "Please enter email and password.";
       return;
     }
 
     try {
       const auth = await apiService.login({ email, password });
       localStorage.setItem(STORAGE_KEYS.token, auth.token);
-      loginError.textContent = "";
+      if (loginError) loginError.textContent = "";
       setAuth(true);
       await loadAllData();
     } catch (error) {
-      loginError.textContent = error instanceof Error ? error.message : "Login failed.";
+      if (loginError) loginError.textContent = error instanceof Error ? error.message : "Login failed.";
     }
   });
 
@@ -537,10 +541,16 @@ function setupForms() {
       await apiService.register({ name, email, password });
       state.tempEmail = email;
       if (registerError) registerError.textContent = "";
-      registerPage.classList.remove("active");
-      otpPage.classList.add("active");
+      if (registerPage && otpPage) {
+        registerPage.classList.remove("active");
+        otpPage.classList.add("active");
+      }
     } catch (error) {
-      if (registerError) registerError.textContent = error.message;
+      if (registerError) {
+        registerError.textContent = error.message;
+      } else {
+        alert(error.message);
+      }
     }
   });
 
@@ -554,13 +564,23 @@ function setupForms() {
     }
 
     try {
+      if (!state.tempEmail) {
+        throw new Error("Session expired. Please register again.");
+      }
       const auth = await apiService.verifyOtp({ email: state.tempEmail, otp });
+      if (!auth || !auth.token) {
+        throw new Error("Verification failed. No token received.");
+      }
       localStorage.setItem(STORAGE_KEYS.token, auth.token);
       if (otpError) otpError.textContent = "";
       setAuth(true);
       await loadAllData();
     } catch (error) {
-      if (otpError) otpError.textContent = error.message;
+      if (otpError) {
+        otpError.textContent = error.message;
+      } else {
+        alert(error.message);
+      }
     }
   });
 
