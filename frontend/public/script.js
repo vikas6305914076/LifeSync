@@ -1,16 +1,15 @@
+﻿const API_BASE = "https://lifesync-production-1cdc.up.railway.app/api";
+
 const STORAGE_KEYS = {
   auth: "lifesync_auth",
-  expenses: "lifesync_expenses",
-  tasks: "lifesync_tasks",
-  grocery: "lifesync_grocery",
-  medicines: "lifesync_medicines",
+  token: "token",
 };
 
 const state = {
-  expenses: JSON.parse(localStorage.getItem(STORAGE_KEYS.expenses) || "[]"),
-  tasks: JSON.parse(localStorage.getItem(STORAGE_KEYS.tasks) || "[]"),
-  grocery: JSON.parse(localStorage.getItem(STORAGE_KEYS.grocery) || "[]"),
-  medicines: JSON.parse(localStorage.getItem(STORAGE_KEYS.medicines) || "[]"),
+  expenses: [],
+  tasks: [],
+  grocery: [],
+  medicines: [],
 };
 
 const loginPage = document.getElementById("loginPage");
@@ -23,11 +22,122 @@ const pages = document.querySelectorAll(".page");
 const sidebar = document.getElementById("sidebar");
 const overlay = document.getElementById("overlay");
 
-function saveState() {
-  localStorage.setItem(STORAGE_KEYS.expenses, JSON.stringify(state.expenses));
-  localStorage.setItem(STORAGE_KEYS.tasks, JSON.stringify(state.tasks));
-  localStorage.setItem(STORAGE_KEYS.grocery, JSON.stringify(state.grocery));
-  localStorage.setItem(STORAGE_KEYS.medicines, JSON.stringify(state.medicines));
+function getAuthToken() {
+  return localStorage.getItem(STORAGE_KEYS.token);
+}
+
+async function apiRequest(path, options = {}) {
+  const token = getAuthToken();
+  const headers = {
+    "Content-Type": "application/json",
+    ...(options.headers || {}),
+  };
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${API_BASE}${path}`, {
+    method: options.method || "GET",
+    headers,
+    body: options.body ? JSON.stringify(options.body) : undefined,
+  });
+
+  if (response.status === 204) {
+    return null;
+  }
+
+  const contentType = response.headers.get("content-type") || "";
+  const data = contentType.includes("application/json")
+    ? await response.json()
+    : await response.text();
+
+  if (!response.ok) {
+    const message =
+      (data && typeof data === "object" && (data.message || data.error)) ||
+      (typeof data === "string" && data) ||
+      `Request failed with status ${response.status}`;
+    throw new Error(message);
+  }
+
+  return data;
+}
+
+function showApiError(action, error) {
+  console.error(`[LifeSync API] ${action}`, error);
+  const message = error instanceof Error ? error.message : String(error);
+  alert(`Unable to ${action}. ${message}`);
+}
+
+function normalizeExpense(expense) {
+  return {
+    id: expense.id,
+    title: expense.title,
+    category: expense.category || "General",
+    amount: expense.amount,
+    date: expense.expenseDate || expense.date || "",
+  };
+}
+
+function normalizeTask(task) {
+  return {
+    id: task.id,
+    title: task.title,
+    completed: Boolean(task.completed),
+  };
+}
+
+function normalizeGrocery(item) {
+  return {
+    id: item.id,
+    title: item.name || item.title,
+    purchased: Boolean(item.purchased),
+  };
+}
+
+function normalizeMedicine(item) {
+  return {
+    id: item.id,
+    title: item.name || item.title,
+    time: item.reminderTime || item.time || "",
+    dosage: item.dosage || "",
+  };
+}
+
+async function loadExpenses() {
+  const data = await apiRequest("/expenses");
+  state.expenses = Array.isArray(data) ? data.map(normalizeExpense) : [];
+}
+
+async function loadTasks() {
+  const data = await apiRequest("/tasks");
+  state.tasks = Array.isArray(data) ? data.map(normalizeTask) : [];
+}
+
+async function loadGrocery() {
+  const data = await apiRequest("/groceries");
+  state.grocery = Array.isArray(data) ? data.map(normalizeGrocery) : [];
+}
+
+async function loadMedicines() {
+  const data = await apiRequest("/medicines");
+  state.medicines = Array.isArray(data) ? data.map(normalizeMedicine) : [];
+}
+
+async function loadAllData() {
+  const results = await Promise.allSettled([
+    loadExpenses(),
+    loadTasks(),
+    loadGrocery(),
+    loadMedicines(),
+  ]);
+
+  const failed = results.filter((result) => result.status === "rejected");
+  renderAll();
+
+  if (failed.length > 0) {
+    showApiError("load dashboard data", failed[0].reason);
+  }
 }
 
 function setAuth(isLoggedIn) {
@@ -113,11 +223,20 @@ function renderExpenses() {
   });
 
   body.querySelectorAll("[data-delete-expense]").forEach((button) => {
-    button.addEventListener("click", () => {
+    button.addEventListener("click", async () => {
       const index = Number(button.dataset.deleteExpense);
-      state.expenses.splice(index, 1);
-      saveState();
-      renderAll();
+      const expense = state.expenses[index];
+      if (!expense) {
+        return;
+      }
+
+      try {
+        await apiRequest(`/expenses/${expense.id}`, { method: "DELETE" });
+        state.expenses.splice(index, 1);
+        renderAll();
+      } catch (error) {
+        showApiError("delete expense", error);
+      }
     });
   });
 }
@@ -141,20 +260,39 @@ function renderTasks() {
   });
 
   taskList.querySelectorAll("[data-task-toggle]").forEach((checkbox) => {
-    checkbox.addEventListener("change", () => {
+    checkbox.addEventListener("change", async () => {
       const index = Number(checkbox.dataset.taskToggle);
-      state.tasks[index].completed = checkbox.checked;
-      saveState();
-      renderAll();
+      const task = state.tasks[index];
+      if (!task) {
+        return;
+      }
+
+      try {
+        const updated = await apiRequest(`/tasks/${task.id}/complete`, { method: "PATCH" });
+        state.tasks[index] = normalizeTask(updated);
+        renderAll();
+      } catch (error) {
+        checkbox.checked = !checkbox.checked;
+        showApiError("update task", error);
+      }
     });
   });
 
   taskList.querySelectorAll("[data-task-delete]").forEach((button) => {
-    button.addEventListener("click", () => {
+    button.addEventListener("click", async () => {
       const index = Number(button.dataset.taskDelete);
-      state.tasks.splice(index, 1);
-      saveState();
-      renderAll();
+      const task = state.tasks[index];
+      if (!task) {
+        return;
+      }
+
+      try {
+        await apiRequest(`/tasks/${task.id}`, { method: "DELETE" });
+        state.tasks.splice(index, 1);
+        renderAll();
+      } catch (error) {
+        showApiError("delete task", error);
+      }
     });
   });
 }
@@ -178,20 +316,38 @@ function renderGrocery() {
   });
 
   groceryList.querySelectorAll("[data-grocery-toggle]").forEach((button) => {
-    button.addEventListener("click", () => {
+    button.addEventListener("click", async () => {
       const index = Number(button.dataset.groceryToggle);
-      state.grocery[index].purchased = !state.grocery[index].purchased;
-      saveState();
-      renderAll();
+      const item = state.grocery[index];
+      if (!item) {
+        return;
+      }
+
+      try {
+        const updated = await apiRequest(`/groceries/${item.id}/purchase`, { method: "PATCH" });
+        state.grocery[index] = normalizeGrocery(updated);
+        renderAll();
+      } catch (error) {
+        showApiError("update grocery item", error);
+      }
     });
   });
 
   groceryList.querySelectorAll("[data-grocery-delete]").forEach((button) => {
-    button.addEventListener("click", () => {
+    button.addEventListener("click", async () => {
       const index = Number(button.dataset.groceryDelete);
-      state.grocery.splice(index, 1);
-      saveState();
-      renderAll();
+      const item = state.grocery[index];
+      if (!item) {
+        return;
+      }
+
+      try {
+        await apiRequest(`/groceries/${item.id}`, { method: "DELETE" });
+        state.grocery.splice(index, 1);
+        renderAll();
+      } catch (error) {
+        showApiError("delete grocery item", error);
+      }
     });
   });
 }
@@ -215,11 +371,20 @@ function renderMedicines() {
   });
 
   medicineList.querySelectorAll("[data-medicine-delete]").forEach((button) => {
-    button.addEventListener("click", () => {
+    button.addEventListener("click", async () => {
       const index = Number(button.dataset.medicineDelete);
-      state.medicines.splice(index, 1);
-      saveState();
-      renderAll();
+      const item = state.medicines[index];
+      if (!item) {
+        return;
+      }
+
+      try {
+        await apiRequest(`/medicines/${item.id}`, { method: "DELETE" });
+        state.medicines.splice(index, 1);
+        renderAll();
+      } catch (error) {
+        showApiError("delete medicine", error);
+      }
     });
   });
 }
@@ -240,74 +405,130 @@ function renderAll() {
 }
 
 function setupForms() {
-  loginForm.addEventListener("submit", (event) => {
+  loginForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     const email = document.getElementById("email").value.trim();
     const password = document.getElementById("password").value.trim();
+
     if (!email || !password) {
       loginError.textContent = "Please enter email and password.";
       return;
     }
-    loginError.textContent = "";
-    setAuth(true);
+
+    try {
+      const auth = await apiRequest("/auth/login", {
+        method: "POST",
+        body: { email, password },
+      });
+      localStorage.setItem(STORAGE_KEYS.token, auth.token);
+      loginError.textContent = "";
+      setAuth(true);
+      await loadAllData();
+    } catch (error) {
+      loginError.textContent = error instanceof Error ? error.message : "Login failed.";
+    }
   });
 
   document.getElementById("logoutBtn").addEventListener("click", () => {
+    localStorage.removeItem(STORAGE_KEYS.token);
     setAuth(false);
+    state.expenses = [];
+    state.tasks = [];
+    state.grocery = [];
+    state.medicines = [];
+    renderAll();
   });
 
-  document.getElementById("expenseForm").addEventListener("submit", (event) => {
+  document.getElementById("expenseForm").addEventListener("submit", async (event) => {
     event.preventDefault();
-    state.expenses.unshift({
+    const payload = {
       title: document.getElementById("expenseTitle").value.trim(),
-      category: document.getElementById("expenseCategory").value.trim(),
       amount: document.getElementById("expenseAmount").value,
-      date: document.getElementById("expenseDate").value,
-    });
-    saveState();
-    renderAll();
-    event.target.reset();
-    closeModal("expenseModal");
+      expenseDate: document.getElementById("expenseDate").value,
+    };
+
+    try {
+      const created = await apiRequest("/expenses", {
+        method: "POST",
+        body: payload,
+      });
+      const normalized = normalizeExpense(created);
+      normalized.category = document.getElementById("expenseCategory").value.trim() || normalized.category;
+      state.expenses.unshift(normalized);
+      renderAll();
+      event.target.reset();
+      closeModal("expenseModal");
+    } catch (error) {
+      showApiError("create expense", error);
+    }
   });
 
-  document.getElementById("taskForm").addEventListener("submit", (event) => {
+  document.getElementById("taskForm").addEventListener("submit", async (event) => {
     event.preventDefault();
-    state.tasks.unshift({
+    const payload = {
       title: document.getElementById("taskTitle").value.trim(),
-      completed: false,
-    });
-    saveState();
-    renderAll();
-    event.target.reset();
-    closeModal("taskModal");
+    };
+
+    try {
+      const created = await apiRequest("/tasks", {
+        method: "POST",
+        body: payload,
+      });
+      state.tasks.unshift(normalizeTask(created));
+      renderAll();
+      event.target.reset();
+      closeModal("taskModal");
+    } catch (error) {
+      showApiError("create task", error);
+    }
   });
 
-  document.getElementById("groceryForm").addEventListener("submit", (event) => {
+  document.getElementById("groceryForm").addEventListener("submit", async (event) => {
     event.preventDefault();
-    state.grocery.unshift({
-      title: document.getElementById("groceryTitle").value.trim(),
-      purchased: false,
-    });
-    saveState();
-    renderAll();
-    event.target.reset();
-    closeModal("groceryModal");
+    const payload = {
+      name: document.getElementById("groceryTitle").value.trim(),
+    };
+
+    try {
+      const created = await apiRequest("/groceries", {
+        method: "POST",
+        body: payload,
+      });
+      state.grocery.unshift(normalizeGrocery(created));
+      renderAll();
+      event.target.reset();
+      closeModal("groceryModal");
+    } catch (error) {
+      showApiError("create grocery item", error);
+    }
   });
 
-  document.getElementById("medicineForm").addEventListener("submit", (event) => {
+  document.getElementById("medicineForm").addEventListener("submit", async (event) => {
     event.preventDefault();
-    state.medicines.unshift({
-      title: document.getElementById("medicineTitle").value.trim(),
-      time: document.getElementById("medicineTime").value,
-    });
-    saveState();
-    renderAll();
-    event.target.reset();
-    closeModal("medicineModal");
+    const title = document.getElementById("medicineTitle").value.trim();
+    const time = document.getElementById("medicineTime").value;
+    const payload = {
+      name: title,
+      dosage: "As directed",
+      reminderTime: time,
+    };
+
+    try {
+      const created = await apiRequest("/medicines", {
+        method: "POST",
+        body: payload,
+      });
+      state.medicines.unshift(normalizeMedicine(created));
+      renderAll();
+      event.target.reset();
+      closeModal("medicineModal");
+    } catch (error) {
+      showApiError("create medicine", error);
+    }
   });
 }
 
-function init() {
+async function init() {
   const isLoggedIn = localStorage.getItem(STORAGE_KEYS.auth) === "true";
   setAuth(isLoggedIn);
   setupNavigation();
@@ -315,7 +536,14 @@ function init() {
   setupModals();
   setupForms();
   showPage("dashboardPage");
-  renderAll();
+
+  if (isLoggedIn) {
+    await loadAllData();
+  } else {
+    renderAll();
+  }
 }
 
-init();
+init().catch((error) => {
+  showApiError("initialize application", error);
+});
