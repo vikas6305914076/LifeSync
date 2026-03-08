@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'http://localhost:8080/api',
+  baseURL: 'https://lifesync-production-1cdc.up.railway.app/api',
 });
 
 // Add a request interceptor to automatically add the JWT token to requests

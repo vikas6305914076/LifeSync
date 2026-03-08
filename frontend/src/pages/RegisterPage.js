@@ -30,7 +30,7 @@ export default function RegisterPage() {
     } catch (error) {
       const message =
         error.response?.data?.error ||
-        (error.request ? "Cannot reach backend server. Start backend on port 8080." : "Registration failed");
+        "Registration failed";
       alert(message);
     }
   };
