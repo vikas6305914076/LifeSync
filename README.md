@@ -20,14 +20,19 @@ LifeSync is a full-stack productivity app with authentication, expense tracking,
 
 ## Database Setup
 1. Ensure MySQL is running locally.
-2. Create and initialize schema:
-   ```sql
-   SOURCE C:/Users/vikey/OneDrive/Desktop/LifeSync/database/schema.sql;
+2. Initialize the database schema by running this command in your terminal:
+   ```bash
+   mysql -u root -p < "C:\Users\vikey\OneDrive\Desktop\LifeSync\database\schema.sql"
    ```
 3. Backend DB config:
    - Username: `root`
    - Password: `root`
    - Database: `lifesyncdb`
+
+## Email Setup (Required for Invites)
+To enable the invitation feature, open `backend/src/main/resources/application.properties` and update:
+- `spring.mail.username`: Your email address (e.g., Gmail)
+- `spring.mail.password`: Your email password (or App Password if using 2FA)
 
 ## Run Backend
 ```bash
