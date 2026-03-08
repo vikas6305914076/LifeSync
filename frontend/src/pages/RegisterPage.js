@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import api from "../api/axiosConfig";
 import { useAuth } from "../context/AuthContext";
@@ -6,39 +6,59 @@ import { useAuth } from "../context/AuthContext";
 export default function RegisterPage() {
   const navigate = useNavigate();
   const { login } = useAuth();
+  const [error, setError] = useState("");
+  const [lastPayload, setLastPayload] = useState(null);
+
+  const submitRegistration = async (payload) => {
+    try {
+      setError("");
+      const response = await api.post("/auth/register", payload);
+      login(response.data);
+      navigate("/dashboard");
+    } catch (error) {
+      setError(error.response?.data?.error || "Registration failed");
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     const form = new FormData(e.target);
     const inviteToken = (form.get("inviteToken") || "").trim();
 
-    try {
-      const payload = {
-        name: form.get("name"),
-        email: form.get("email"),
-        password: form.get("password"),
-        familyName: form.get("familyName")
-      };
+    const payload = {
+      name: form.get("name"),
+      email: form.get("email"),
+      password: form.get("password"),
+      familyName: form.get("familyName")
+    };
 
-      if (inviteToken) {
-        payload.inviteToken = inviteToken;
-      }
-
-      const response = await api.post("/auth/register", payload);
-      login(response.data);
-      navigate("/dashboard");
-    } catch (error) {
-      const message =
-        error.response?.data?.error ||
-        "Registration failed";
-      alert(message);
+    if (inviteToken) {
+      payload.inviteToken = inviteToken;
     }
+
+    setLastPayload(payload);
+    await submitRegistration(payload);
+  };
+
+  const handleRetry = async () => {
+    if (!lastPayload) {
+      return;
+    }
+    await submitRegistration(lastPayload);
   };
 
   return (
     <div className="auth-page">
       <div className="auth-card">
         <h2>Register</h2>
+        {error && (
+          <div className="alert error auth-error-row">
+            <span>{error}</span>
+            <button type="button" className="secondary-btn" onClick={handleRetry}>
+              Retry
+            </button>
+          </div>
+        )}
         <form onSubmit={handleSubmit}>
           <input name="name" type="text" placeholder="Name" required />
           <input name="email" type="email" placeholder="Email" required />

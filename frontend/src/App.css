@@ -323,6 +323,13 @@ thead {
   color: var(--primary);
 }
 
+.auth-error-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
 @media (max-width: 1080px) {
   .metric-grid {
     grid-template-columns: repeat(2, minmax(180px, 1fr));

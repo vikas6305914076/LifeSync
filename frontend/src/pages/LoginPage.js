@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import api from "../api/axiosConfig";
 import { useAuth } from "../context/AuthContext";
@@ -6,29 +6,50 @@ import { useAuth } from "../context/AuthContext";
 export default function LoginPage() {
   const navigate = useNavigate();
   const { login } = useAuth();
+  const [error, setError] = useState("");
+  const [lastPayload, setLastPayload] = useState(null);
+
+  const submitLogin = async (payload) => {
+    try {
+      setError("");
+      const response = await api.post("/auth/login", payload);
+      login(response.data);
+      navigate("/dashboard");
+    } catch (error) {
+      setError(error.response?.data?.error || "Login failed");
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     const form = new FormData(e.target);
-    try {
-      const response = await api.post("/auth/login", {
-        email: form.get("email"),
-        password: form.get("password")
-      });
-      login(response.data);
-      navigate("/dashboard");
-    } catch (error) {
-      const message =
-        error.response?.data?.error ||
-        "Login failed";
-      alert(message);
+    const payload = {
+      email: form.get("email"),
+      password: form.get("password")
+    };
+    setLastPayload(payload);
+    await submitLogin(payload);
+  };
+
+  const handleRetry = async () => {
+    if (!lastPayload) {
+      return;
     }
+    await submitLogin(lastPayload);
   };
 
   return (
     <div className="auth-page">
       <div className="auth-card">
         <h2>Login</h2>
+        {error && (
+          <div className="alert error auth-error-row">
+            <span>{error}</span>
+            <button type="button" className="secondary-btn" onClick={handleRetry}>
+              Retry
+            </button>
+          </div>
+        )}
         <form onSubmit={handleSubmit}>
           <input name="email" type="email" placeholder="Email" required />
           <input name="password" type="password" placeholder="Password" required />
