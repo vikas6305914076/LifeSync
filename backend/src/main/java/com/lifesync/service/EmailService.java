@@ -42,8 +42,12 @@ public class EmailService {
         return sendEmail(toEmail, subject, body);
     }
 
+    public boolean isConfigured() {
+        return fromEmail != null && !fromEmail.isBlank();
+    }
+
     private boolean sendEmail(String toEmail, String subject, String body) {
-        if (fromEmail == null || fromEmail.isBlank()) {
+        if (!isConfigured()) {
             logger.warn("Mail sender is not configured. Skipping email send to {}", toEmail);
             return false;
         }
