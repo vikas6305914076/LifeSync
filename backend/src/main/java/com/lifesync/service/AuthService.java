@@ -73,7 +73,9 @@ public class AuthService {
                 existing.setEmailOtpExpiresAt(null);
             }
             userRepository.save(existing);
-            return Map.of("message", "Registration successful");
+            return Map.of("message", resent
+                    ? "Registration successful. OTP sent to your email."
+                    : "Registration successful. Email service is not configured; account auto-verified.");
         }
 
         Family family;
@@ -133,7 +135,9 @@ public class AuthService {
             saved.setEmailOtpExpiresAt(null);
             userRepository.save(saved);
         }
-        return Map.of("message", "Registration successful");
+        return Map.of("message", otpSent
+                ? "Registration successful. OTP sent to your email."
+                : "Registration successful. Email service is not configured; account auto-verified.");
     }
 
     public AuthResponse login(LoginRequest request) {
