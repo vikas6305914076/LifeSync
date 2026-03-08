@@ -63,19 +63,12 @@ public class AuthService {
             existing.setEmailOtpExpiresAt(LocalDateTime.now().plusMinutes(10));
             boolean resent = emailService.sendOtpEmail(existing.getEmail(), otp);
             if (!resent) {
-                existing.setVerified(true);
-                existing.setOtp(null);
-                existing.setEmailOtpExpiresAt(null);
-                userRepository.save(existing);
-                return Map.of(
-                        "message", "Registration successful. Email service is unavailable; account auto-verified.",
-                        "requiresOtp", false
-                );
+                throw new BadRequestException("Unable to send verification OTP. Please configure mail settings and try again.");
             }
             userRepository.save(existing);
             return Map.of(
-                    "message", "Registration successful. OTP sent to your email.",
-                    "requiresOtp", true
+                "message", "Registration successful. OTP sent to your email.",
+                "requiresOtp", true
             );
         }
 
@@ -126,14 +119,8 @@ public class AuthService {
         User saved = userRepository.save(user);
         boolean otpSent = emailService.sendOtpEmail(saved.getEmail(), otp);
         if (!otpSent) {
-            saved.setVerified(true);
-            saved.setOtp(null);
-            saved.setEmailOtpExpiresAt(null);
-            userRepository.save(saved);
-            return Map.of(
-                    "message", "Registration successful. Email service is unavailable; account auto-verified.",
-                    "requiresOtp", false
-            );
+            userRepository.delete(saved);
+            throw new BadRequestException("Unable to send verification OTP. Please configure mail settings and try again.");
         }
         return Map.of(
                 "message", "Registration successful. OTP sent to your email.",

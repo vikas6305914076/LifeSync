@@ -30,19 +30,14 @@ export default function RegisterPage() {
         return;
       }
 
-      if (!requiresOtp) {
-        const loginResponse = await api.post("/auth/login", {
-          email: payload.email,
-          password: payload.password
-        });
-        login(loginResponse.data);
-        navigate("/dashboard");
-        return;
-      }
-
       setPendingEmail(payload.email);
       setPendingPassword(payload.password);
-      setInfo(response.data?.message || "Registration successful. Enter OTP to verify your account.");
+      setInfo(
+        response.data?.message ||
+          (requiresOtp
+            ? "Registration successful. Enter OTP to verify your account."
+            : "Registration submitted. Please verify your OTP.")
+      );
     } catch (error) {
       if (error?.response?.status === 409) {
         setError("This email is already registered. Please login with your existing account.");
