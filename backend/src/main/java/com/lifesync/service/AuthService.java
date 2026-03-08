@@ -51,8 +51,26 @@ public class AuthService {
 
     @Transactional
     public Map<String, String> register(RegisterRequest request) {
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new BadRequestException("Email is already registered");
+        String normalizedEmail = request.getEmail().toLowerCase();
+        User existing = userRepository.findByEmail(normalizedEmail).orElse(null);
+        if (existing != null) {
+            if (existing.isEmailVerified()) {
+                throw new BadRequestException("Email is already registered");
+            }
+
+            String otp = generateOtp();
+            existing.setEmailOtp(otp);
+            existing.setEmailOtpExpiresAt(LocalDateTime.now().plusMinutes(10));
+            boolean resent = emailService.sendOtpEmail(existing.getEmail(), otp);
+            if (!resent) {
+                existing.setEmailVerified(true);
+                existing.setEmailOtp(null);
+                existing.setEmailOtpExpiresAt(null);
+            }
+            userRepository.save(existing);
+            return Map.of("message", resent
+                    ? "Account exists but not verified. OTP resent to your email."
+                    : "Account activated because mail is unavailable. You can login now.");
         }
 
         Family family;
@@ -90,7 +108,7 @@ public class AuthService {
 
         User user = new User();
         user.setName(request.getName());
-        user.setEmail(request.getEmail().toLowerCase());
+        user.setEmail(normalizedEmail);
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setFamily(family);
         user.setFamilyRole(familyRole);
@@ -100,7 +118,14 @@ public class AuthService {
         user.setEmailOtpExpiresAt(LocalDateTime.now().plusMinutes(10));
 
         User saved = userRepository.save(user);
-        emailService.sendOtpEmail(saved.getEmail(), otp);
+        boolean otpSent = emailService.sendOtpEmail(saved.getEmail(), otp);
+        if (!otpSent) {
+            saved.setEmailVerified(true);
+            saved.setEmailOtp(null);
+            saved.setEmailOtpExpiresAt(null);
+            userRepository.save(saved);
+            return Map.of("message", "Registration successful. Mail is unavailable, account auto-verified.");
+        }
         return Map.of("message", "Registration successful. Please verify OTP sent to your email.");
     }
 
