@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import api from "../api/axiosConfig";
 import { useAuth } from "../context/AuthContext";
+import extractApiError from "../utils/apiError";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -16,7 +17,7 @@ export default function LoginPage() {
       login(response.data);
       navigate("/dashboard");
     } catch (error) {
-      setError(error.response?.data?.error || "Login failed");
+      setError(extractApiError(error, "Unable to login."));
     }
   };
 
