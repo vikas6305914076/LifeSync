@@ -21,6 +21,9 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BadRequestException.class)
     public ResponseEntity<Map<String, Object>> handleBadRequest(BadRequestException ex) {
+        if (ex.getMessage() != null && ex.getMessage().toLowerCase().contains("already registered")) {
+            return buildResponse(HttpStatus.CONFLICT, ex.getMessage());
+        }
         return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
