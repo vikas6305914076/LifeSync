@@ -39,6 +39,16 @@ export default function MedicinesPage() {
     }
   };
 
+  const handleDelete = async (id) => {
+    try {
+      setError("");
+      await api.delete(`/medicines/${id}`);
+      loadMedicines();
+    } catch (err) {
+      setError(err.response?.data?.error || "Could not delete medicine.");
+    }
+  };
+
   return (
     <div className="page-wrap">
       <div className="page-header-row">
@@ -67,6 +77,9 @@ export default function MedicinesPage() {
                 {medicine.dosage} | {medicine.reminderTime}
               </p>
             </div>
+            <button className="danger-btn" onClick={() => handleDelete(medicine.id)}>
+              Delete
+            </button>
           </article>
         ))}
       </div>

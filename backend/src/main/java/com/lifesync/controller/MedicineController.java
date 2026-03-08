@@ -35,4 +35,11 @@ public class MedicineController {
         User user = userService.getCurrentUser(auth.getName());
         return ResponseEntity.ok(medicineService.getMedicines(user));
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteMedicine(@PathVariable Long id, Authentication auth) {
+        User user = userService.getCurrentUser(auth.getName());
+        medicineService.deleteMedicine(user, id);
+        return ResponseEntity.noContent().build();
+    }
 }

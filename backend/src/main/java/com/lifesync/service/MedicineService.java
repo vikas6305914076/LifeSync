@@ -2,6 +2,7 @@ package com.lifesync.service;
 
 import com.lifesync.dto.medicine.MedicineRequest;
 import com.lifesync.dto.medicine.MedicineResponse;
+import com.lifesync.exception.ResourceNotFoundException;
 import com.lifesync.model.Medicine;
 import com.lifesync.model.User;
 import com.lifesync.repository.MedicineRepository;
@@ -29,6 +30,12 @@ public class MedicineService {
 
     public List<MedicineResponse> getMedicines(User user) {
         return medicineRepository.findAllByUserOrderByIdDesc(user).stream().map(this::toResponse).toList();
+    }
+
+    public void deleteMedicine(User user, Long id) {
+        Medicine medicine = medicineRepository.findByIdAndUser(id, user)
+                .orElseThrow(() -> new ResourceNotFoundException("Medicine not found"));
+        medicineRepository.delete(medicine);
     }
 
     private MedicineResponse toResponse(Medicine m) {
