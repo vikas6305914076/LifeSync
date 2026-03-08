@@ -61,16 +61,19 @@ public class AuthService {
             String otp = generateOtp();
             existing.setEmailOtp(otp);
             existing.setEmailOtpExpiresAt(LocalDateTime.now().plusMinutes(10));
-            boolean resent = emailService.sendOtpEmail(existing.getEmail(), otp);
+            boolean resent;
+            try {
+                resent = emailService.sendOtpEmail(existing.getEmail(), otp);
+            } catch (Exception ex) {
+                resent = false;
+            }
             if (!resent) {
                 existing.setEmailVerified(true);
                 existing.setEmailOtp(null);
                 existing.setEmailOtpExpiresAt(null);
             }
             userRepository.save(existing);
-            return Map.of("message", resent
-                    ? "Account exists but not verified. OTP resent to your email."
-                    : "Account activated because mail is unavailable. You can login now.");
+            return Map.of("message", "Registration successful");
         }
 
         Family family;
@@ -118,15 +121,19 @@ public class AuthService {
         user.setEmailOtpExpiresAt(LocalDateTime.now().plusMinutes(10));
 
         User saved = userRepository.save(user);
-        boolean otpSent = emailService.sendOtpEmail(saved.getEmail(), otp);
+        boolean otpSent;
+        try {
+            otpSent = emailService.sendOtpEmail(saved.getEmail(), otp);
+        } catch (Exception ex) {
+            otpSent = false;
+        }
         if (!otpSent) {
             saved.setEmailVerified(true);
             saved.setEmailOtp(null);
             saved.setEmailOtpExpiresAt(null);
             userRepository.save(saved);
-            return Map.of("message", "Registration successful. Mail is unavailable, account auto-verified.");
         }
-        return Map.of("message", "Registration successful. Please verify OTP sent to your email.");
+        return Map.of("message", "Registration successful");
     }
 
     public AuthResponse login(LoginRequest request) {
