@@ -18,10 +18,23 @@ export default function RegisterPage() {
     try {
       setError("");
       setInfo("");
+      setPendingEmail("");
+      setOtp("");
       const response = await api.post("/auth/register", payload);
+      const requiresOtp = response.data?.requiresOtp === true;
 
       if (response.data?.token) {
         login(response.data);
+        navigate("/dashboard");
+        return;
+      }
+
+      if (!requiresOtp) {
+        const loginResponse = await api.post("/auth/login", {
+          email: payload.email,
+          password: payload.password
+        });
+        login(loginResponse.data);
         navigate("/dashboard");
         return;
       }

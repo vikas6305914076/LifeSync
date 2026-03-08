@@ -50,11 +50,7 @@ public class AuthService {
     }
 
     @Transactional
-    public Map<String, String> register(RegisterRequest request) {
-        if (!emailService.isConfigured()) {
-            throw new BadRequestException("Email verification service is unavailable. Please try again later.");
-        }
-
+    public Map<String, Object> register(RegisterRequest request) {
         String normalizedEmail = request.getEmail().toLowerCase();
         User existing = userRepository.findByEmail(normalizedEmail).orElse(null);
         if (existing != null) {
@@ -67,10 +63,20 @@ public class AuthService {
             existing.setEmailOtpExpiresAt(LocalDateTime.now().plusMinutes(10));
             boolean resent = emailService.sendOtpEmail(existing.getEmail(), otp);
             if (!resent) {
-                throw new BadRequestException("Unable to send verification OTP. Please try again.");
+                existing.setEmailVerified(true);
+                existing.setEmailOtp(null);
+                existing.setEmailOtpExpiresAt(null);
+                userRepository.save(existing);
+                return Map.of(
+                        "message", "Registration successful. Email service is unavailable; account auto-verified.",
+                        "requiresOtp", false
+                );
             }
             userRepository.save(existing);
-            return Map.of("message", "Registration successful. OTP sent to your email.");
+            return Map.of(
+                    "message", "Registration successful. OTP sent to your email.",
+                    "requiresOtp", true
+            );
         }
 
         Family family;
@@ -120,10 +126,19 @@ public class AuthService {
         User saved = userRepository.save(user);
         boolean otpSent = emailService.sendOtpEmail(saved.getEmail(), otp);
         if (!otpSent) {
-            userRepository.delete(saved);
-            throw new BadRequestException("Unable to send verification OTP. Please try again.");
+            saved.setEmailVerified(true);
+            saved.setEmailOtp(null);
+            saved.setEmailOtpExpiresAt(null);
+            userRepository.save(saved);
+            return Map.of(
+                    "message", "Registration successful. Email service is unavailable; account auto-verified.",
+                    "requiresOtp", false
+            );
         }
-        return Map.of("message", "Registration successful. OTP sent to your email.");
+        return Map.of(
+                "message", "Registration successful. OTP sent to your email.",
+                "requiresOtp", true
+        );
     }
 
     public AuthResponse login(LoginRequest request) {
