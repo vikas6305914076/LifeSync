@@ -19,6 +19,7 @@ export default function RegisterPage() {
       setError("");
       setInfo("");
       setPendingEmail("");
+      setPendingPassword("");
       setOtp("");
       const response = await api.post("/auth/register", payload);
       const requiresOtp = response.data?.requiresOtp === true;
@@ -43,6 +44,10 @@ export default function RegisterPage() {
       setPendingPassword(payload.password);
       setInfo(response.data?.message || "Registration successful. Enter OTP to verify your account.");
     } catch (error) {
+      if (error?.response?.status === 409) {
+        setError("This email is already registered. Please login with your existing account.");
+        return;
+      }
       setError(extractApiError(error, "Unable to register."));
     }
   };
