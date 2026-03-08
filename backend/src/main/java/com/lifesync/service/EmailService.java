@@ -14,7 +14,7 @@ public class EmailService {
     private final String frontendBaseUrl;
 
     public EmailService(JavaMailSender mailSender,
-                        @Value("${spring.mail.username}") String fromEmail,
+                        @Value("${spring.mail.username:}") String fromEmail,
                         @Value("${app.frontend.base-url:https://life-sync-wine.vercel.app}") String frontendBaseUrl) {
         this.mailSender = mailSender;
         this.fromEmail = fromEmail;
@@ -41,6 +41,9 @@ public class EmailService {
     }
 
     private void sendEmail(String toEmail, String subject, String body) {
+        if (fromEmail == null || fromEmail.isBlank()) {
+            throw new BadRequestException("Mail sender is not configured. Set SPRING_MAIL_USERNAME.");
+        }
         try {
             SimpleMailMessage message = new SimpleMailMessage();
             message.setFrom(fromEmail);
