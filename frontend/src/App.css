@@ -165,6 +165,12 @@
   color: #991b1b;
 }
 
+.alert.info {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+}
+
 .form-grid {
   display: grid;
   gap: 10px;

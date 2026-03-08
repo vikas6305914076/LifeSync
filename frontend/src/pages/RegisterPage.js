@@ -8,14 +8,27 @@ export default function RegisterPage() {
   const navigate = useNavigate();
   const { login } = useAuth();
   const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
+  const [pendingEmail, setPendingEmail] = useState("");
+  const [pendingPassword, setPendingPassword] = useState("");
+  const [otp, setOtp] = useState("");
   const [lastPayload, setLastPayload] = useState(null);
 
   const submitRegistration = async (payload) => {
     try {
       setError("");
+      setInfo("");
       const response = await api.post("/auth/register", payload);
-      login(response.data);
-      navigate("/dashboard");
+
+      if (response.data?.token) {
+        login(response.data);
+        navigate("/dashboard");
+        return;
+      }
+
+      setPendingEmail(payload.email);
+      setPendingPassword(payload.password);
+      setInfo(response.data?.message || "Registration successful. Enter OTP to verify your account.");
     } catch (error) {
       setError(extractApiError(error, "Unable to register."));
     }
@@ -48,10 +61,40 @@ export default function RegisterPage() {
     await submitRegistration(lastPayload);
   };
 
+  const handleVerifyOtp = async (event) => {
+    event.preventDefault();
+    try {
+      setError("");
+      setInfo("");
+      const verifyResponse = await api.post("/auth/verify-otp", {
+        email: pendingEmail,
+        otp
+      });
+
+      if (verifyResponse.data?.token) {
+        login(verifyResponse.data);
+        navigate("/dashboard");
+        return;
+      }
+
+      if (pendingPassword) {
+        const loginResponse = await api.post("/auth/login", {
+          email: pendingEmail,
+          password: pendingPassword
+        });
+        login(loginResponse.data);
+        navigate("/dashboard");
+      }
+    } catch (verifyError) {
+      setError(extractApiError(verifyError, "Unable to verify OTP."));
+    }
+  };
+
   return (
     <div className="auth-page">
       <div className="auth-card">
         <h2>Register</h2>
+        {info && <div className="alert info">{info}</div>}
         {error && (
           <div className="alert error auth-error-row">
             <span>{error}</span>
@@ -70,6 +113,20 @@ export default function RegisterPage() {
             Create Account
           </button>
         </form>
+        {pendingEmail && (
+          <form onSubmit={handleVerifyOtp}>
+            <input
+              type="text"
+              placeholder="Enter OTP from email"
+              value={otp}
+              onChange={(e) => setOtp(e.target.value)}
+              required
+            />
+            <button className="secondary-btn" type="submit">
+              Verify OTP
+            </button>
+          </form>
+        )}
         <div className="auth-link">
           Already have an account? <Link to="/login">Login</Link>
         </div>
