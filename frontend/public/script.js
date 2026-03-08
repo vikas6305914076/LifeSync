@@ -529,6 +529,11 @@ function setupForms() {
 }
 
 async function init() {
+  if (!document.getElementById("loginPage")) {
+    console.log("Landing page detected. Skipping dashboard init.");
+    return;
+  }
+
   const isLoggedIn = localStorage.getItem(STORAGE_KEYS.auth) === "true";
   setAuth(isLoggedIn);
   setupNavigation();
@@ -545,5 +550,5 @@ async function init() {
 }
 
 init().catch((error) => {
-  showApiError("initialize application", error);
+  console.error(error);
 });
