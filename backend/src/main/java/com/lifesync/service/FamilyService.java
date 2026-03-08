@@ -3,6 +3,7 @@ package com.lifesync.service;
 import com.lifesync.dto.family.FamilyMemberResponse;
 import com.lifesync.dto.family.FamilyResponse;
 import com.lifesync.dto.invite.FamilyInviteResponse;
+import com.lifesync.dto.invite.InviteValidationResponse;
 import com.lifesync.dto.invite.InviteCreateRequest;
 import com.lifesync.exception.BadRequestException;
 import com.lifesync.model.*;
@@ -21,13 +22,16 @@ public class FamilyService {
     private final UserService userService;
     private final UserRepository userRepository;
     private final FamilyInviteRepository familyInviteRepository;
+    private final EmailService emailService;
 
     public FamilyService(UserService userService,
                          UserRepository userRepository,
-                         FamilyInviteRepository familyInviteRepository) {
+                         FamilyInviteRepository familyInviteRepository,
+                         EmailService emailService) {
         this.userService = userService;
         this.userRepository = userRepository;
         this.familyInviteRepository = familyInviteRepository;
+        this.emailService = emailService;
     }
 
     @Transactional
@@ -64,6 +68,12 @@ public class FamilyService {
         invite.setExpiresAt(LocalDateTime.now().plusDays(7));
 
         FamilyInvite saved = familyInviteRepository.save(invite);
+        emailService.sendInvitationEmail(
+                saved.getInvitedEmail(),
+                saved.getInviteToken(),
+                family.getName(),
+                user.getName()
+        );
         return toInviteResponse(saved);
     }
 
@@ -115,5 +125,30 @@ public class FamilyService {
                 invite.getStatus().name(),
                 invite.getExpiresAt()
         );
+    }
+
+    @Transactional
+    public InviteValidationResponse validateInviteToken(String inviteToken) {
+        FamilyInvite invite = familyInviteRepository.findByInviteToken(inviteToken)
+                .orElse(null);
+
+        if (invite == null) {
+            return new InviteValidationResponse(false, "Invite token is invalid", null, null, null);
+        }
+
+        if (invite.getStatus() != InviteStatus.PENDING) {
+            return new InviteValidationResponse(false, "Invite is already used or inactive",
+                    invite.getInvitedEmail(), invite.getFamily().getName(), invite.getExpiresAt());
+        }
+
+        if (invite.getExpiresAt().isBefore(LocalDateTime.now())) {
+            invite.setStatus(InviteStatus.EXPIRED);
+            familyInviteRepository.save(invite);
+            return new InviteValidationResponse(false, "Invite has expired",
+                    invite.getInvitedEmail(), invite.getFamily().getName(), invite.getExpiresAt());
+        }
+
+        return new InviteValidationResponse(true, "Invite is valid",
+                invite.getInvitedEmail(), invite.getFamily().getName(), invite.getExpiresAt());
     }
 }

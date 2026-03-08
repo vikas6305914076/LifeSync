@@ -3,6 +3,7 @@ package com.lifesync.service;
 import com.lifesync.dto.auth.AuthResponse;
 import com.lifesync.dto.auth.LoginRequest;
 import com.lifesync.dto.auth.RegisterRequest;
+import com.lifesync.dto.auth.VerifyOtpRequest;
 import com.lifesync.exception.BadRequestException;
 import com.lifesync.model.*;
 import com.lifesync.repository.FamilyInviteRepository;
@@ -18,6 +19,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Map;
+import java.util.Random;
 
 @Service
 public class AuthService {
@@ -28,23 +31,26 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
+    private final EmailService emailService;
 
     public AuthService(UserRepository userRepository,
                        FamilyRepository familyRepository,
                        FamilyInviteRepository familyInviteRepository,
                        PasswordEncoder passwordEncoder,
                        AuthenticationManager authenticationManager,
-                       JwtService jwtService) {
+                       JwtService jwtService,
+                       EmailService emailService) {
         this.userRepository = userRepository;
         this.familyRepository = familyRepository;
         this.familyInviteRepository = familyInviteRepository;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
+        this.emailService = emailService;
     }
 
     @Transactional
-    public AuthResponse register(RegisterRequest request) {
+    public Map<String, String> register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new BadRequestException("Email is already registered");
         }
@@ -84,16 +90,28 @@ public class AuthService {
 
         User user = new User();
         user.setName(request.getName());
-        user.setEmail(request.getEmail());
+        user.setEmail(request.getEmail().toLowerCase());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setFamily(family);
         user.setFamilyRole(familyRole);
+        user.setEmailVerified(false);
+        String otp = generateOtp();
+        user.setEmailOtp(otp);
+        user.setEmailOtpExpiresAt(LocalDateTime.now().plusMinutes(10));
 
         User saved = userRepository.save(user);
-        return buildAuthResponse(saved);
+        emailService.sendOtpEmail(saved.getEmail(), otp);
+        return Map.of("message", "Registration successful. Please verify OTP sent to your email.");
     }
 
     public AuthResponse login(LoginRequest request) {
+        User user = userRepository.findByEmail(request.getEmail().toLowerCase())
+                .orElseThrow(() -> new BadRequestException("Invalid credentials"));
+
+        if (!user.isEmailVerified()) {
+            throw new BadRequestException("Email not verified. Please verify OTP before login.");
+        }
+
         try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
@@ -102,9 +120,40 @@ public class AuthService {
             throw new BadRequestException("Invalid credentials");
         }
 
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new BadRequestException("Invalid credentials"));
         return buildAuthResponse(user);
+    }
+
+    @Transactional
+    public AuthResponse verifyOtp(VerifyOtpRequest request) {
+        User user = userRepository.findByEmail(request.getEmail().toLowerCase())
+                .orElseThrow(() -> new BadRequestException("User not found"));
+
+        if (user.isEmailVerified()) {
+            return buildAuthResponse(user);
+        }
+
+        if (user.getEmailOtp() == null || user.getEmailOtpExpiresAt() == null) {
+            throw new BadRequestException("OTP not generated. Please register again.");
+        }
+
+        if (user.getEmailOtpExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new BadRequestException("OTP has expired");
+        }
+
+        if (!user.getEmailOtp().equals(request.getOtp())) {
+            throw new BadRequestException("Invalid OTP");
+        }
+
+        user.setEmailVerified(true);
+        user.setEmailOtp(null);
+        user.setEmailOtpExpiresAt(null);
+        User saved = userRepository.save(user);
+        return buildAuthResponse(saved);
+    }
+
+    private String generateOtp() {
+        int otp = 100000 + new Random().nextInt(900000);
+        return String.valueOf(otp);
     }
 
     private AuthResponse buildAuthResponse(User user) {

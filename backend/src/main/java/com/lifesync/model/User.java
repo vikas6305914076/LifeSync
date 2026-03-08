@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "users")
@@ -23,6 +24,15 @@ public class User {
     @JsonIgnore
     @Column(nullable = false)
     private String password;
+
+    @Column(name = "email_verified", nullable = false)
+    private boolean emailVerified = false;
+
+    @Column(name = "email_otp")
+    private String emailOtp;
+
+    @Column(name = "email_otp_expires_at")
+    private LocalDateTime emailOtpExpiresAt;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -78,6 +88,30 @@ public class User {
 
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    public boolean isEmailVerified() {
+        return emailVerified;
+    }
+
+    public void setEmailVerified(boolean emailVerified) {
+        this.emailVerified = emailVerified;
+    }
+
+    public String getEmailOtp() {
+        return emailOtp;
+    }
+
+    public void setEmailOtp(String emailOtp) {
+        this.emailOtp = emailOtp;
+    }
+
+    public LocalDateTime getEmailOtpExpiresAt() {
+        return emailOtpExpiresAt;
+    }
+
+    public void setEmailOtpExpiresAt(LocalDateTime emailOtpExpiresAt) {
+        this.emailOtpExpiresAt = emailOtpExpiresAt;
     }
 
     public Role getRole() {
