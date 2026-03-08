@@ -59,12 +59,12 @@ public class AuthService {
             }
 
             String otp = generateOtp();
-            existing.setEmailOtp(otp);
+            existing.setOtp(otp);
             existing.setEmailOtpExpiresAt(LocalDateTime.now().plusMinutes(10));
             boolean resent = emailService.sendOtpEmail(existing.getEmail(), otp);
             if (!resent) {
-                existing.setEmailVerified(true);
-                existing.setEmailOtp(null);
+                existing.setVerified(true);
+                existing.setOtp(null);
                 existing.setEmailOtpExpiresAt(null);
                 userRepository.save(existing);
                 return Map.of(
@@ -118,16 +118,16 @@ public class AuthService {
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setFamily(family);
         user.setFamilyRole(familyRole);
-        user.setEmailVerified(false);
+        user.setVerified(false);
         String otp = generateOtp();
-        user.setEmailOtp(otp);
+        user.setOtp(otp);
         user.setEmailOtpExpiresAt(LocalDateTime.now().plusMinutes(10));
 
         User saved = userRepository.save(user);
         boolean otpSent = emailService.sendOtpEmail(saved.getEmail(), otp);
         if (!otpSent) {
-            saved.setEmailVerified(true);
-            saved.setEmailOtp(null);
+            saved.setVerified(true);
+            saved.setOtp(null);
             saved.setEmailOtpExpiresAt(null);
             userRepository.save(saved);
             return Map.of(
@@ -145,7 +145,7 @@ public class AuthService {
         User user = userRepository.findByEmail(request.getEmail().toLowerCase())
                 .orElseThrow(() -> new BadRequestException("Invalid credentials"));
 
-        if (!user.isEmailVerified()) {
+        if (!user.isVerified()) {
             throw new BadRequestException("Email not verified. Please verify OTP before login.");
         }
 
@@ -165,11 +165,11 @@ public class AuthService {
         User user = userRepository.findByEmail(request.getEmail().toLowerCase())
                 .orElseThrow(() -> new BadRequestException("User not found"));
 
-        if (user.isEmailVerified()) {
+        if (user.isVerified()) {
             return buildAuthResponse(user);
         }
 
-        if (user.getEmailOtp() == null || user.getEmailOtpExpiresAt() == null) {
+        if (user.getOtp() == null || user.getEmailOtpExpiresAt() == null) {
             throw new BadRequestException("OTP not generated. Please register again.");
         }
 
@@ -177,20 +177,19 @@ public class AuthService {
             throw new BadRequestException("OTP has expired");
         }
 
-        if (!user.getEmailOtp().equals(request.getOtp())) {
+        if (!user.getOtp().equals(request.getOtp())) {
             throw new BadRequestException("Invalid OTP");
         }
 
-        user.setEmailVerified(true);
-        user.setEmailOtp(null);
+        user.setVerified(true);
+        user.setOtp(null);
         user.setEmailOtpExpiresAt(null);
         User saved = userRepository.save(user);
         return buildAuthResponse(saved);
     }
 
     private String generateOtp() {
-        int otp = 100000 + new Random().nextInt(900000);
-        return String.valueOf(otp);
+        return String.valueOf(new Random().nextInt(900000) + 100000);
     }
 
     private AuthResponse buildAuthResponse(User user) {

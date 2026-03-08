@@ -98,12 +98,28 @@ public class User {
         this.emailVerified = emailVerified;
     }
 
+    public boolean isVerified() {
+        return emailVerified;
+    }
+
+    public void setVerified(boolean verified) {
+        this.emailVerified = verified;
+    }
+
     public String getEmailOtp() {
         return emailOtp;
     }
 
     public void setEmailOtp(String emailOtp) {
         this.emailOtp = emailOtp;
+    }
+
+    public String getOtp() {
+        return emailOtp;
+    }
+
+    public void setOtp(String otp) {
+        this.emailOtp = otp;
     }
 
     public LocalDateTime getEmailOtpExpiresAt() {
