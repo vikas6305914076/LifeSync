@@ -53,10 +53,10 @@ export default function RegisterPage() {
     const inviteToken = (form.get("inviteToken") || "").trim();
 
     const payload = {
-      name: form.get("name"),
-      email: form.get("email"),
-      password: form.get("password"),
-      familyName: form.get("familyName")
+      name: (form.get("name") || "").trim(),
+      email: (form.get("email") || "").trim(),
+      password: form.get("password") || "",
+      familyName: (form.get("familyName") || "").trim()
     };
 
     if (inviteToken) {
@@ -76,12 +76,17 @@ export default function RegisterPage() {
 
   const handleVerifyOtp = async (event) => {
     event.preventDefault();
+    const normalizedOtp = otp.trim();
+    if (!/^\d{6}$/.test(normalizedOtp)) {
+      setError("OTP must be a 6-digit number.");
+      return;
+    }
     try {
       setError("");
       setInfo("");
       const verifyResponse = await api.post("/auth/verify-otp", {
         email: pendingEmail,
-        otp
+        otp: normalizedOtp
       });
 
       if (verifyResponse.data?.token) {
@@ -133,6 +138,9 @@ export default function RegisterPage() {
               placeholder="Enter OTP from email"
               value={otp}
               onChange={(e) => setOtp(e.target.value)}
+              inputMode="numeric"
+              pattern="\d{6}"
+              maxLength={6}
               required
             />
             <button className="secondary-btn" type="submit">

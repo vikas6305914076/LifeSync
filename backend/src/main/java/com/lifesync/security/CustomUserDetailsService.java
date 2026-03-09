@@ -18,7 +18,8 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        com.lifesync.model.User appUser = userRepository.findByEmail(username)
+        String normalizedEmail = username == null ? null : username.trim().toLowerCase();
+        com.lifesync.model.User appUser = userRepository.findByEmail(normalizedEmail)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
         return User.builder()
                 .username(appUser.getEmail())

@@ -51,7 +51,7 @@ public class AuthService {
 
     @Transactional
     public Map<String, Object> register(RegisterRequest request) {
-        String normalizedEmail = request.getEmail().toLowerCase();
+        String normalizedEmail = request.getEmail().trim().toLowerCase();
         User existing = userRepository.findByEmail(normalizedEmail).orElse(null);
         if (existing != null) {
             if (existing.isEmailVerified()) {
@@ -106,7 +106,7 @@ public class AuthService {
         }
 
         User user = new User();
-        user.setName(request.getName());
+        user.setName(request.getName().trim());
         user.setEmail(normalizedEmail);
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setFamily(family);
@@ -129,7 +129,8 @@ public class AuthService {
     }
 
     public AuthResponse login(LoginRequest request) {
-        User user = userRepository.findByEmail(request.getEmail().toLowerCase())
+        String normalizedEmail = request.getEmail().trim().toLowerCase();
+        User user = userRepository.findByEmail(normalizedEmail)
                 .orElseThrow(() -> new BadRequestException("Invalid credentials"));
 
         if (!user.isVerified()) {
@@ -138,7 +139,7 @@ public class AuthService {
 
         try {
             authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
+                    new UsernamePasswordAuthenticationToken(normalizedEmail, request.getPassword())
             );
         } catch (BadCredentialsException ex) {
             throw new BadRequestException("Invalid credentials");
@@ -149,7 +150,8 @@ public class AuthService {
 
     @Transactional
     public AuthResponse verifyOtp(VerifyOtpRequest request) {
-        User user = userRepository.findByEmail(request.getEmail().toLowerCase())
+        String normalizedEmail = request.getEmail().trim().toLowerCase();
+        User user = userRepository.findByEmail(normalizedEmail)
                 .orElseThrow(() -> new BadRequestException("User not found"));
 
         if (user.isVerified()) {
@@ -164,7 +166,7 @@ public class AuthService {
             throw new BadRequestException("OTP has expired");
         }
 
-        if (!user.getOtp().equals(request.getOtp())) {
+        if (!user.getOtp().equals(request.getOtp().trim())) {
             throw new BadRequestException("Invalid OTP");
         }
 
